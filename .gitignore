@@ -1,2 +1,5 @@
 *.png
 .idea/
+*.gpx
+src/__pycache__/
+
