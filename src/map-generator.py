@@ -12,17 +12,22 @@ def parse_gpx(filename, in_proj="epsg:4326", out_proj="epsg:5514"):
 
     for w in gpx.waypoints:
         tmp = transform(in_p, out_p, w.latitude, w.longitude)
-        result.append(tmp)
+        result.append({"coord": tmp, "name": w.name})
         print(tmp)
+    print(result)
     return result
 
 
 def main():
     points = parse_gpx("export.gpx")
-    bb = BoundingBox(points, padding=200)
+    bb = BoundingBox(points, padding=300)
 
-    map = Map(10_000, bb)
+    map = Map(25_000, bb)
+    w, h = map.get_printsize()
+    print("25 - size: {}x{} [mm] - 300m padding".format(int(w * 1000), int(h * 1000)))
+
     map.download_map()
+    map.add_grid()
     map.mark_points(points, radius_realm=30)
 
     map.save_img("response.png")

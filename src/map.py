@@ -75,6 +75,7 @@ class Map:
             im = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             if im is None:
                 print(response.content)
+                im = self.__get_maptile(start, end, w, h)
             print(im.shape)
             return im
 
@@ -101,19 +102,40 @@ class Map:
         print_cm = 100 * m / self.scale
         return self.print_cm_to_pixels(print_cm, dpi)
 
-    def mark_points(self, points, radius_realm=20, color=(0, 0, 255), thickness=3):
+    def get_printsize(self):
+        return self.bounding_box.get_width() / self.scale, self.bounding_box.get_height() / self.scale
+
+    def mark_points(self, points, radius_realm=20, color=(0, 0, 255), thickness=3, print_text=True, extra_offset=5, font_face=cv2.FONT_HERSHEY_DUPLEX):
         for point in points:
-            dx, dy = self.realm_to_pixels(point[0] - self.bounding_box.left), self.realm_to_pixels(self.bounding_box.top - point[1])
-            cv2.circle(self.__img, (dx, dy), self.realm_to_pixels(radius_realm), color, thickness)
+            coords = self.realm_to_pixels(point["coord"][0] - self.bounding_box.left), self.realm_to_pixels(self.bounding_box.top - point["coord"][1])
+            radius = self.realm_to_pixels(radius_realm)
+            cv2.circle(self.__img, coords, radius, color, thickness)
+
+            if print_text:
+                cv2.putText(self.__img, point["name"], tuple(radius + c + extra_offset for c in coords), font_face, 1.0, color, thickness=2)
+
+    def add_grid(self, meters=1000):
+        km = self.realm_to_pixels(meters)
+        # vertical
+        n_lines, rem = divmod(self.__img.shape[1], km)
+        rem //= 2
+        for line in range(n_lines + 1):
+            cv2.line(self.__img, (rem + line * km, 0), (rem + line * km, self.__img.shape[0]), (0, 0, 0))
+        # horizontal
+        n_lines, rem = divmod(self.__img.shape[0], km)
+        rem //= 2
+        for line in range(n_lines + 1):
+            cv2.line(self.__img, (0, rem + line * km), (self.__img.shape[1], rem + line * km), (0, 0, 0))
+
 
 class BoundingBox:
 
     def __init__(self, points, padding=0):
-        self.right = max(points, key=lambda x: x[0])[0]
-        self.left = min(points, key=lambda x: x[0])[0]
+        self.right = max(points, key=lambda x: x["coord"][0])["coord"][0]
+        self.left = min(points, key=lambda x: x["coord"][0])["coord"][0]
 
-        self.top = max(points, key=lambda x: x[1])[1]
-        self.bottom = min(points, key=lambda x: x[1])[1]
+        self.top = max(points, key=lambda x: x["coord"][1])["coord"][1]
+        self.bottom = min(points, key=lambda x: x["coord"][1])["coord"][1]
 
         if padding:
             self.add_padding(padding)
