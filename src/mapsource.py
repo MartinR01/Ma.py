@@ -86,11 +86,56 @@ class MapSource:
             print("unknown code: ", response.status_code)
             return None
 
-# import untangle
-# import math
-#
-# class MapyCzSource:
-#
-#     def __init__(self, filename):
-#             gpx = untangle.parse(filename)
-#
+import math
+import map
+
+class MapyCzSource:
+
+    def __init__(self, gpx, scale=50_000):
+        for point in gpx:
+            x, y = self.convert_to_webmercat(point['coord'])
+            print(x, y)
+            point['coord'] = {'x': x, 'y': y}
+
+        print(gpx)
+        self.bounding_box = map.BoundingBox(gpx)
+        self.scale = scale
+
+        self.download_map()
+
+    def convert_to_webmercat(self, coords, zoom=18):
+        zoom = 18  # 256px = 100m
+        x = (math.radians(float(coords['lon'])) + math.pi) * (256 / (2 * math.pi)) * 2 ** zoom
+        y = 256 / (2 * math.pi) * (2 ** zoom) * (
+                math.pi - math.log(math.tan(math.pi / 4 + math.radians(float(coords['lat'])) / 2)))
+        return x, y
+
+    def download_map(self, zoom=18):
+        # todo calculate zoom from scale??
+        total_w = realm_to_pixels(self.bounding_box.get_width(), self.scale)
+        total_h = realm_to_pixels(self.bounding_box.get_height(), self.scale)
+        result = np.full(shape=(total_h, total_w, 3), dtype=np.uint8, fill_value=(255, 255, 255))
+
+        print(math.floor(self.bounding_box.top), math.ceil(self.bounding_box.bottom))
+        for idy in range(math.floor(self.bounding_box.bottom/256), math.ceil(self.bounding_box.top/256)):
+            for idx in range(math.floor(self.bounding_box.left/256), math.ceil(self.bounding_box.right/256)):
+                tile = self.get_maptile(zoom, idx, idy)
+                cv2.imwrite("aaaaa.png", tile)
+
+    def get_maptile(self, zoom, idx, idy):
+        url = "https://mapserver.mapy.cz/turist-m/"+str(zoom)+"-"+str(idx)+"-"+str(idy)
+        print(url)
+        response = requests.get(url)
+        if response.status_code == 200:
+            print("success")
+            # print(response.content)
+
+            nparr = np.fromstring(response.content, np.uint8)
+            im = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if im is None:
+                print(response.content)
+                im = self.get_maptile(zoom, idx, idy)
+            print(im.shape)
+            return im
+        else:
+            print(response)

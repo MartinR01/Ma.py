@@ -45,14 +45,15 @@ class Map:
 
 class BoundingBox:
 
-    def __init__(self, points, padding=0):
-        self.right = max(points, key=lambda x: x["coord"][0])["coord"][0]
-        self.left = min(points, key=lambda x: x["coord"][0])["coord"][0]
+    def __init__(self, points, padding=2):
+        self.right = max(points, key=lambda x: x["coord"]['x'])["coord"]['x']
+        self.left = min(points, key=lambda x: x["coord"]['x'])["coord"]['x']
 
-        self.top = max(points, key=lambda x: x["coord"][1])["coord"][1]
-        self.bottom = min(points, key=lambda x: x["coord"][1])["coord"][1]
+        self.top = max(points, key=lambda x: x["coord"]['y'])["coord"]['y']
+        self.bottom = min(points, key=lambda x: x["coord"]['y'])["coord"]['y']
 
         if padding:
+            # todo not functional for all coord systems
             self.add_padding(padding)
 
     def add_padding(self, padding):

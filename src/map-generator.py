@@ -4,6 +4,7 @@ from map import BoundingBox, Map
 import pickle
 from _collections import defaultdict
 import math
+import mapsource
 
 def parse_gpx(filename, in_proj="epsg:4326", out_proj="epsg:5514"):
     gpx = untangle.parse(filename)
@@ -12,15 +13,13 @@ def parse_gpx(filename, in_proj="epsg:4326", out_proj="epsg:5514"):
     counter = defaultdict(int)
 
     for w in gpx.gpx.wpt:
-        tmp = transform(Proj(in_proj), Proj(out_proj), w['lat'], w['lon'])
-        x, y = tmp
-        x = (math.radians(float(w['lon'])) + math.pi) * (256/(2 * math.pi)) * 2 ** 18
-        y = 256 / (2 * math.pi) * (2 ** 18) * (math.pi - math.log(math.tan(math.pi/4 + math.radians(float(w['lat']))/2)))
-        print(x, y)
-        # score = w.desc.cdata
-        score = "1"
+        # tmp = transform(Proj(in_proj), Proj(out_proj), w['lat'], w['lon'])
+        # x, y = tmp
+        # print(x, y)
+
+        score = w.desc.cdata
         letter = chr(ord('A') + counter[score])
-        result.append({"coord": tmp, "name": score+letter})
+        result.append({"coord": {'lat': w['lat'], 'lon': w['lon']}, "name": score+letter})
         counter[score] += 1
         print(w.name.cdata, "\t", score+letter)
     print(result)
@@ -28,7 +27,12 @@ def parse_gpx(filename, in_proj="epsg:4326", out_proj="epsg:5514"):
 
 
 def main():
-    points = parse_gpx("export.gpx", out_proj="EPSG:3857")
+    # import units
+    # a = units.pixels_to_realm(units.print_cm_to_pixels(20), 50000)
+    # print(a)
+    points = parse_gpx("export.gpx")
+    mapsource.MapyCzSource(points)
+
     # bb = BoundingBox(points, padding=300)
     # map = Map(25_000, bb)
     # w, h = map.get_printsize()
