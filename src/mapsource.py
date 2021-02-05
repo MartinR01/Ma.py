@@ -44,6 +44,8 @@ class MapSource:
 
     def __get_maptile(self, start, end, w, h):
         sc = None
+
+        # todo check at __init__ and raise custom exception
         if self.scale == 10_000:
             sc = '10'
         elif self.scale == 25_000:
@@ -83,3 +85,12 @@ class MapSource:
         else:
             print("unknown code: ", response.status_code)
             return None
+
+# import untangle
+# import math
+#
+# class MapyCzSource:
+#
+#     def __init__(self, filename):
+#             gpx = untangle.parse(filename)
+#
