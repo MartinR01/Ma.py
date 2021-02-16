@@ -2,7 +2,8 @@ import cv2
 
 import mapsource
 from units import realm_to_pixels
-
+import pyproj
+import math
 
 class Map:
 
@@ -45,37 +46,37 @@ class Map:
 
 class BoundingBox:
 
-    def __init__(self, points, padding=2):
-        self.right = max(points, key=lambda x: x["coord"]['x'])["coord"]['x']
-        self.left = min(points, key=lambda x: x["coord"]['x'])["coord"]['x']
+    def __init__(self, points, padding=200):
+        self.geodesic = pyproj.Geod(ellps='WGS84')
 
-        self.top = max(points, key=lambda x: x["coord"]['y'])["coord"]['y']
-        self.bottom = min(points, key=lambda x: x["coord"]['y'])["coord"]['y']
+        self.top = max(points, key=lambda x: x["coord"]['lat'])["coord"]['lat']
+        self.bottom = min(points, key=lambda x: x["coord"]['lat'])["coord"]['lat']
 
-        if padding:
-            # todo not functional for all coord systems
-            self.add_padding(padding)
+        self.right = max(points, key=lambda x: x["coord"]['lon'])["coord"]['lon']
+        self.left = min(points, key=lambda x: x["coord"]['lon'])["coord"]['lon']
+
+        self.add_padding(padding)
 
     def add_padding(self, padding):
-        self.right += padding
-        self.top += padding
-        self.left -= padding
-        self.bottom -= padding
+        self.left, self.top, _ = self.geodesic.fwd(self.left, self.top, -45, math.sqrt(2 * (padding ** 2)))
+        self.right, self.bottom, _ = self.geodesic.fwd(self.right, self.bottom, 135, math.sqrt(2 * (padding ** 2)))
 
-    def get_top_left(self):
+    def top_left(self):
         return self.left, self.top
 
-    def get_bottom_right(self):
+    def bottom_right(self):
         return self.right, self.bottom
 
-    def get_bottom_left(self):
+    def bottom_left(self):
         return self.left, self.bottom
 
-    def get_top_right(self):
+    def top_right(self):
         return self.right, self.top
 
     def get_width(self):
-        return self.right - self.left
+        fwd_azimuth, back_azimuth, distance = self.geodesic.inv(self.left, self.top, self.right, self.top)
+        return distance
 
     def get_height(self):
-        return self.top - self.bottom
+        fwd_azimuth, back_azimuth, distance = self.geodesic.inv(self.left, self.top, self.left, self.bottom)
+        return distance
