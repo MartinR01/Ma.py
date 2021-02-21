@@ -1,10 +1,13 @@
 from pyproj import Proj, transform
 import untangle
-from map import BoundingBox, Map
+from map import Map
 import pickle
 from _collections import defaultdict
+from boundingbox import BoundingBox
 import math
 import mapsource
+import paper
+
 
 def parse_gpx(filename, in_proj="epsg:4326", out_proj="epsg:5514"):
     gpx = untangle.parse(filename)
@@ -19,36 +22,23 @@ def parse_gpx(filename, in_proj="epsg:4326", out_proj="epsg:5514"):
 
         score = w.desc.cdata
         letter = chr(ord('A') + counter[score])
-        result.append({"coord": {'lat': w['lat'], 'lon': w['lon']}, "name": score+letter})
+        result.append({"coord": {'lat': w['lat'], 'lon': w['lon']}, "name": score + letter})
         counter[score] += 1
-        print(w.name.cdata, "\t", score+letter)
+        print(w.name.cdata, "\t", score + letter)
     print(result)
     return result
 
 
 def main():
-    # import units
-    # a = units.pixels_to_realm(units.print_cm_to_pixels(20), 50000)
-    # print(a)
-    points = parse_gpx("export.gpx")
-    mapsource.MapyCzSource(points)
+    gpx = parse_gpx("many.gpx")
+    bb = BoundingBox(gpx, padding=300)
+    page = paper.Paper(paper.A4, 10, 300)
 
-    # bb = BoundingBox(points, padding=300)
-    # map = Map(25_000, bb)
-    # w, h = map.get_printsize()
-    # print("25 - size: {}x{} [mm] - 300m padding".format(int(w * 1000), int(h * 1000)))
+    map = mapsource.MapyCzSource(bb, 11, page)
+
+
     #
     # map.download_map()
-    # map.add_grid()
-
-    # with open('rick.pkl', 'wb') as pickle_file:
-    #     pickle.dump(map, pickle_file)
-
-    # with open('rick.pkl', 'rb') as pickle_file:
-    #     map = pickle.load(pickle_file)
-    #
-    # map.mark_points(points, radius_realm=60, scale=2.1)
-    # map.save_img("response.png")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 import numpy as np
 import requests
 import cv2
+import math
 
-from units import realm_to_pixels, pixels_to_realm
+from units import realm_to_pixels, pixels_to_realm, inch_to_cm
 
 
 class MapSource:
@@ -86,41 +87,51 @@ class MapSource:
             print("unknown code: ", response.status_code)
             return None
 
-import math
-import map
+
+def coords_to_webmercat(coords, zoom):
+    # zoom = 18  # 256px = 100m
+    x = (math.radians(float(coords['lon'])) + math.pi) * (256 / (2 * math.pi)) * 2 ** zoom
+    y = 256 / (2 * math.pi) * (2 ** zoom) * (
+            math.pi - math.log(math.tan(math.pi / 4 + math.radians(float(coords['lat'])) / 2)))
+    return x, y
+
+
+def zoom_to_scale(zoom, dpi):
+    realm = 50 * (2 ** (19 - zoom))  # in one 256px tile
+    return (realm * 10) / inch_to_cm(256 / dpi)
+
 
 class MapyCzSource:
 
-    def __init__(self, gpx, scale=50_000):
-        for point in gpx:
-            x, y = self.convert_to_webmercat(point['coord'])
-            print(x, y)
-            point['coord'] = {'x': x, 'y': y}
-
-        print(gpx)
-        self.bounding_box = map.BoundingBox(gpx)
-        self.scale = scale
-
-        self.download_map()
-
-    def convert_to_webmercat(self, coords, zoom=18):
-        zoom = 18  # 256px = 100m
-        x = (math.radians(float(coords['lon'])) + math.pi) * (256 / (2 * math.pi)) * 2 ** zoom
-        y = 256 / (2 * math.pi) * (2 ** zoom) * (
-                math.pi - math.log(math.tan(math.pi / 4 + math.radians(float(coords['lat'])) / 2)))
-        return x, y
+    def __init__(self, bounding_box, zoom, paper):
+        # todo write zoom help
+        self.bounding_box = bounding_box
+        self.scale = zoom_to_scale(zoom, paper.dpi)
+        self.zoom = zoom
 
     def download_map(self, zoom=18):
-        # todo calculate zoom from scale??
         total_w = realm_to_pixels(self.bounding_box.get_width(), self.scale)
         total_h = realm_to_pixels(self.bounding_box.get_height(), self.scale)
-        result = np.full(shape=(total_h, total_w, 3), dtype=np.uint8, fill_value=(255, 255, 255))
 
+        # fill to 256 px
+        total_h += 256 - (total_h % 256)
+        total_w += 256 - (total_w % 256)
+
+        result = np.full(shape=(total_h, total_w, 3), dtype=np.uint8, fill_value=(255, 255, 255))
+        print("shape", result.shape)
         print(math.floor(self.bounding_box.top), math.ceil(self.bounding_box.bottom))
-        for idy in range(math.floor(self.bounding_box.bottom/256), math.ceil(self.bounding_box.top/256)):
-            for idx in range(math.floor(self.bounding_box.left/256), math.ceil(self.bounding_box.right/256)):
+        print("x range: ",math.floor(self.bounding_box.left/256), math.ceil(self.bounding_box.right/256))
+        for posy, idy in enumerate(range(math.floor(self.bounding_box.bottom/256), math.ceil(self.bounding_box.top/256))):
+            for posx, idx in enumerate(range(math.floor(self.bounding_box.left/256), math.ceil(self.bounding_box.right/256))):
                 tile = self.get_maptile(zoom, idx, idy)
-                cv2.imwrite("aaaaa.png", tile)
+                print("cur", posx, posy)
+                print(result[0:256, 0:256].shape)
+                try:
+                    result[posy*256:(posy+1)*256, posx*256:(posx+1)*256] = tile
+                except:
+                    continue
+
+        cv2.imwrite("aaaaa.png", result)
 
     def get_maptile(self, zoom, idx, idy):
         url = "https://mapserver.mapy.cz/turist-m/"+str(zoom)+"-"+str(idx)+"-"+str(idy)
