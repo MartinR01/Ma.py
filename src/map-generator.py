@@ -20,7 +20,8 @@ def parse_gpx(filename, in_proj="epsg:4326", out_proj="epsg:5514"):
         # x, y = tmp
         # print(x, y)
 
-        score = w.desc.cdata
+        # score = w.desc.cdata
+        score = "1"
         letter = chr(ord('A') + counter[score])
         result.append({"coord": {'lat': w['lat'], 'lon': w['lon']}, "name": score + letter})
         counter[score] += 1
@@ -34,11 +35,11 @@ def main():
     bb = BoundingBox(gpx, padding=300)
     page = paper.Paper(paper.A4, 10, 300)
 
-    map = mapsource.MapyCzSource(bb, 11, page)
+    map = mapsource.MapyCzSource(bb, 14, page)
+    map.download_map()
 
 
     #
-    # map.download_map()
 
 
 if __name__ == "__main__":

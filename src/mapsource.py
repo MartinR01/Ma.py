@@ -105,48 +105,47 @@ class MapyCzSource:
 
     def __init__(self, bounding_box, zoom, paper):
         # todo write zoom help
-        self.bounding_box = bounding_box
+        self.bb = bounding_box
         self.scale = zoom_to_scale(zoom, paper.dpi)
+        self.paper = paper
+
         self.zoom = zoom
 
-    def download_map(self, zoom=18):
-        total_w = realm_to_pixels(self.bounding_box.get_width(), self.scale)
-        total_h = realm_to_pixels(self.bounding_box.get_height(), self.scale)
+    def download_map(self):
 
-        # fill to 256 px
-        total_h += 256 - (total_h % 256)
-        total_w += 256 - (total_w % 256)
+        left, top = self.bb.top_left()
+        left, top = coords_to_webmercat({'lon': left, 'lat': top}, self.zoom)
 
+        right, bottom = self.bb.bottom_right()
+        right, bottom = coords_to_webmercat({'lon': right, 'lat': bottom}, self.zoom)
+
+        top, bottom = math.floor(top / 256), math.ceil(bottom / 256)
+        left, right = math.floor(left / 256), math.ceil(right / 256)
+
+        total_h = (bottom - top) * 256
+        total_w = (right - left) * 256
+
+        # todo can crash if the object doesnt fit into memory
         result = np.full(shape=(total_h, total_w, 3), dtype=np.uint8, fill_value=(255, 255, 255))
-        print("shape", result.shape)
-        print(math.floor(self.bounding_box.top), math.ceil(self.bounding_box.bottom))
-        print("x range: ",math.floor(self.bounding_box.left/256), math.ceil(self.bounding_box.right/256))
-        for posy, idy in enumerate(range(math.floor(self.bounding_box.bottom/256), math.ceil(self.bounding_box.top/256))):
-            for posx, idx in enumerate(range(math.floor(self.bounding_box.left/256), math.ceil(self.bounding_box.right/256))):
-                tile = self.get_maptile(zoom, idx, idy)
-                print("cur", posx, posy)
-                print(result[0:256, 0:256].shape)
-                try:
-                    result[posy*256:(posy+1)*256, posx*256:(posx+1)*256] = tile
-                except:
-                    continue
+
+        for posy, idy in enumerate(range(top, bottom)):
+            for posx, idx in enumerate(range(left, right)):
+
+                tile = self.get_maptile(idx, idy)
+                result[posy*256:(posy+1)*256, posx*256:(posx+1)*256] = tile
 
         cv2.imwrite("aaaaa.png", result)
 
-    def get_maptile(self, zoom, idx, idy):
-        url = "https://mapserver.mapy.cz/turist-m/"+str(zoom)+"-"+str(idx)+"-"+str(idy)
+    def get_maptile(self, idx, idy):
+        url = "https://mapserver.mapy.cz/turist-m/"+str(self.zoom)+"-"+str(idx)+"-"+str(idy)
         print(url)
         response = requests.get(url)
-        if response.status_code == 200:
-            print("success")
-            # print(response.content)
-
-            nparr = np.fromstring(response.content, np.uint8)
-            im = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            if im is None:
-                print(response.content)
-                im = self.get_maptile(zoom, idx, idy)
-            print(im.shape)
-            return im
-        else:
+        if response.status_code != 200:
             print(response)
+
+        nparr = np.fromstring(response.content, np.uint8)
+        im = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if im is None:
+            print(response.content)
+            im = self.get_maptile(idx, idy)
+        return im
