@@ -7,11 +7,11 @@ class BoundingBox:
     def __init__(self, points, padding=200):
         self.geodesic = pyproj.Geod(ellps='WGS84')
 
-        self.top = max(points, key=lambda x: x["coord"]['lat'])["coord"]['lat']
-        self.bottom = min(points, key=lambda x: x["coord"]['lat'])["coord"]['lat']
+        self.top = max(points, key=lambda x: float(x["coord"]['lat']))["coord"]['lat']
+        self.bottom = min(points, key=lambda x: float(x["coord"]['lat']))["coord"]['lat']
 
-        self.right = max(points, key=lambda x: x["coord"]['lon'])["coord"]['lon']
-        self.left = min(points, key=lambda x: x["coord"]['lon'])["coord"]['lon']
+        self.right = max(points, key=lambda x: float(x["coord"]['lon']))["coord"]['lon']
+        self.left = min(points, key=lambda x: float(x["coord"]['lon']))["coord"]['lon']
 
         self.add_padding(padding)
 
