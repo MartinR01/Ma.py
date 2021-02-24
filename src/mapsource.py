@@ -131,20 +131,19 @@ class MapyCzSource:
         bottom, exbottom = bottom // 256 + 1, 256 - bottom % 256
         right, exright = right // 256 + 1, 256 - right % 256
 
+        # convert rounded tile numbers back to pixels
         total_h = (bottom - top) * 256
         total_w = (right - left) * 256
 
-        print(total_h, total_w)
 
         # todo can crash if the object doesnt fit into memory
         result = np.full(shape=(total_h, total_w, 3), dtype=np.uint8, fill_value=(255, 255, 255))
 
         for posy, idy in enumerate(range(top, bottom)):
             for posx, idx in enumerate(range(left, right)):
-
+                # todo start new thread
                 tile = self.get_maptile(idx, idy)
                 result[posy*256:(posy+1)*256, posx*256:(posx+1)*256] = tile
-
 
         # cut the to be exact representative of the bounding box
         result = result[extop:result.shape[0] - exbottom, exleft:result.shape[1] - exright]

@@ -35,7 +35,8 @@ def main():
     bb = BoundingBox(gpx, padding=500)
     page = paper.Paper(paper.A4, 10, 300)
 
-    mapsrc = mapsource.MapyCzSource(bb, 14, page)
+    mapsrc = mapsource.MapyCzSource(bb, 16, page)
+    print("scale:", mapsrc.scale)
     img = mapsrc.download_map()
 
     mp = Map(mapsrc.scale, bb, img)
