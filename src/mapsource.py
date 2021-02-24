@@ -96,17 +96,19 @@ def coords_to_webmercat(coords, zoom):
     return x, y
 
 
-def zoom_to_scale(zoom, dpi):
-    realm = 50 * (2 ** (19 - zoom))  # in one 256px tile
-    return (realm * 10) / inch_to_cm(256 / dpi)
+def zoom_to_scale(zoom, dpi, lat):
+    realm = (EQUATORIAL_CIRCUMFERENCE * math.cos(math.radians(lat))) / 2 ** zoom
+    return (dpi * 100 * realm) / (2.54 * 256)
+
+
+EQUATORIAL_CIRCUMFERENCE = 40075016.686
 
 
 class MapyCzSource:
 
     def __init__(self, bounding_box, zoom, paper):
-        # todo write zoom help
         self.bb = bounding_box
-        self.scale = zoom_to_scale(zoom, paper.dpi)
+        self.scale = zoom_to_scale(zoom, paper.dpi, bounding_box.top)
         self.paper = paper
 
         self.zoom = zoom
@@ -119,11 +121,15 @@ class MapyCzSource:
         right, bottom = self.bb.bottom_right()
         right, bottom = coords_to_webmercat({'lon': right, 'lat': bottom}, self.zoom)
 
+        print("real height: ", self.bb.get_height(), pixels_to_realm(bottom-top, self.scale, 300))
+        print(pixels_to_realm((bottom-top), 4544, 300))
+
         top, bottom = math.floor(top / 256), math.ceil(bottom / 256)
         left, right = math.floor(left / 256), math.ceil(right / 256)
 
         total_h = (bottom - top) * 256
         total_w = (right - left) * 256
+
 
         # todo can crash if the object doesnt fit into memory
         result = np.full(shape=(total_h, total_w, 3), dtype=np.uint8, fill_value=(255, 255, 255))
@@ -134,7 +140,7 @@ class MapyCzSource:
                 tile = self.get_maptile(idx, idy)
                 result[posy*256:(posy+1)*256, posx*256:(posx+1)*256] = tile
 
-        cv2.imwrite("aaaaa.png", result)
+        return result
 
     def get_maptile(self, idx, idy):
         url = "https://mapserver.mapy.cz/turist-m/"+str(self.zoom)+"-"+str(idx)+"-"+str(idy)
