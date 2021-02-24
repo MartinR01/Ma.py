@@ -109,6 +109,7 @@ class MapyCzSource:
     def __init__(self, bounding_box, zoom, paper):
         self.bb = bounding_box
         self.scale = zoom_to_scale(zoom, paper.dpi, bounding_box.top)
+        print("scale", self.scale)
         self.paper = paper
 
         self.zoom = zoom
@@ -116,20 +117,24 @@ class MapyCzSource:
     def download_map(self):
 
         left, top = self.bb.top_left()
-        left, top = coords_to_webmercat({'lon': left, 'lat': top}, self.zoom)
+        left, top = (int(_) for _ in coords_to_webmercat({'lon': left, 'lat': top}, self.zoom))
 
         right, bottom = self.bb.bottom_right()
-        right, bottom = coords_to_webmercat({'lon': right, 'lat': bottom}, self.zoom)
+        right, bottom = (int(_) for _ in coords_to_webmercat({'lon': right, 'lat': bottom}, self.zoom))
 
-        print("real height: ", self.bb.get_height(), pixels_to_realm(bottom-top, self.scale, 300))
-        print(pixels_to_realm((bottom-top), 4544, 300))
+        # convert to tile numbers (256px)
+        # and get the extra pixels for cutting later
+        top, extop = divmod(top, 256)
+        left, exleft = divmod(left, 256)
 
-        top, bottom = math.floor(top / 256), math.ceil(bottom / 256)
-        left, right = math.floor(left / 256), math.ceil(right / 256)
+        # slightly modified for the opposing sides
+        bottom, exbottom = bottom // 256 + 1, 256 - bottom % 256
+        right, exright = right // 256 + 1, 256 - right % 256
 
         total_h = (bottom - top) * 256
         total_w = (right - left) * 256
 
+        print(total_h, total_w)
 
         # todo can crash if the object doesnt fit into memory
         result = np.full(shape=(total_h, total_w, 3), dtype=np.uint8, fill_value=(255, 255, 255))
@@ -139,6 +144,10 @@ class MapyCzSource:
 
                 tile = self.get_maptile(idx, idy)
                 result[posy*256:(posy+1)*256, posx*256:(posx+1)*256] = tile
+
+
+        # cut the to be exact representative of the bounding box
+        result = result[extop:result.shape[0] - exbottom, exleft:result.shape[1] - exright]
 
         return result
 

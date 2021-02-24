@@ -31,15 +31,20 @@ def parse_gpx(filename, in_proj="epsg:4326", out_proj="epsg:5514"):
 
 
 def main():
-    gpx = parse_gpx("many.gpx")
-    bb = BoundingBox(gpx, padding=300)
+    gpx = parse_gpx("test_gpx/pno22.gpx")
+    bb = BoundingBox(gpx, padding=500)
     page = paper.Paper(paper.A4, 10, 300)
 
-    map = mapsource.MapyCzSource(bb, 14, page)
-    map.download_map()
+    mapsrc = mapsource.MapyCzSource(bb, 14, page)
+    img = mapsrc.download_map()
 
+    mp = Map(mapsrc.scale, bb, img)
+    # mp = Map(72223.822090, bb, img)
 
-    #
+    mp.mark_points(gpx)
+    mp.add_grid()
+
+    mp.save_img("result.png")
 
 
 if __name__ == "__main__":
