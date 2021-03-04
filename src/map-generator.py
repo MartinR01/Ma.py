@@ -42,7 +42,7 @@ def main():
     mp = Map(mapsrc.scale, bb, img)
     # mp = Map(72223.822090, bb, img)
 
-    mp.mark_points(gpx)
+    mp.mark_points(gpx, radius_realm=30)
     mp.add_grid()
 
     mp.save_img("result.png")

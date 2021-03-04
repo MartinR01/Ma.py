@@ -3,3 +3,4 @@
 *.gpx
 src/__pycache__/
 *.pkl
+venv/
