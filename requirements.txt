@@ -1,5 +1,5 @@
 numpy
-requests
+grequests
 opencv-python
 pyproj
 untangle

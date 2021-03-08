@@ -1,5 +1,5 @@
 import numpy as np
-import requests
+import grequests
 import cv2
 import math
 
@@ -139,27 +139,31 @@ class MapyCzSource:
         # todo can crash if the object doesnt fit into memory
         result = np.full(shape=(total_h, total_w, 3), dtype=np.uint8, fill_value=(255, 255, 255))
 
+        urls = []
+
         for posy, idy in enumerate(range(top, bottom)):
             for posx, idx in enumerate(range(left, right)):
-                # todo start new thread
-                tile = self.get_maptile(idx, idy)
-                result[posy*256:(posy+1)*256, posx*256:(posx+1)*256] = tile
+                urls.append("https://mapserver.mapy.cz/turist-m/"+str(self.zoom)+"-"+str(idx)+"-"+str(idy))
+
+        res = grequests.map(grequests.get(u) for u in urls)
+
+        id = 0
+        # todo make generator -> async
+        for posy, _ in enumerate(range(top, bottom)):
+            for posx, _ in enumerate(range(left, right)):
+                result[posy*256:(posy+1)*256, posx*256:(posx+1)*256] = self.process_response(res[id])
+                id += 1
+
 
         # cut the to be exact representative of the bounding box
         result = result[extop:result.shape[0] - exbottom, exleft:result.shape[1] - exright]
 
         return result
 
-    def get_maptile(self, idx, idy):
-        url = "https://mapserver.mapy.cz/turist-m/"+str(self.zoom)+"-"+str(idx)+"-"+str(idy)
-        print(url)
-        response = requests.get(url)
+    def process_response(self, response):
         if response.status_code != 200:
             print(response)
 
         nparr = np.fromstring(response.content, np.uint8)
         im = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if im is None:
-            print(response.content)
-            im = self.get_maptile(idx, idy)
         return im
